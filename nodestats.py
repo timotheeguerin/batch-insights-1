@@ -15,7 +15,7 @@ from applicationinsights import TelemetryClient
 
 VERSION = "0.0.1.1"
 _DEFAULT_STATS_UPDATE_INTERVAL = 5
-
+PROCESSES_TO_WATCH = ['3dsmax.exe', '3dsmaxcmd.exe', '3dsmaxio.exe', '3dsmaxcmdio.exe', 'Render.exe', 'kick.exe', 'Commandline.exe', 'CINEMA 4D.exe']
 
 def setup_logger():
     # logger defines
@@ -100,7 +100,8 @@ class NodeStats:
                  swap_avail=0,
                  disk_io=None,
                  disk_usage=None,
-                 net=None):
+                 net=None,
+                 process_list=None):
         """
         Map the attributes
         """
@@ -115,6 +116,8 @@ class NodeStats:
         self.disk_io = disk_io or NodeIOStats()
         self.disk_usage = disk_usage or dict()
         self.net = net or NodeIOStats()
+        # Tuple (proc name, cpu %)
+        self.process_list = process_list
 
     @property
     def mem_used(self):
@@ -213,25 +216,31 @@ class NodeStatsCollector:
 
         swap_total, _, swap_avail, _, _, _ = psutil.swap_memory()
 
+        # Tuple (proc name, CPU %)
+        process_list = list(((proc.info['name'], proc.cpu_percent(interval=1)) for proc in psutil.process_iter(attrs=['name']) if proc.info["name"] in PROCESSES_TO_WATCH))
+
         stats = NodeStats(
             cpu_count=psutil.cpu_count(),
             cpu_percent=psutil.cpu_percent(interval=None, percpu=True),
             num_pids=len(psutil.pids()),
 
-        # Memory
+            # Memory
             mem_total=mem.total,
             mem_avail=mem.available,
             swap_total=swap_total,
             swap_avail=swap_avail,
 
-        # Disk IO
+            # Disk IO
             disk_io=disk_stats,
 
-        # Disk usage
+            # Disk usage
             disk_usage=disk_usage,
 
-        # Net transfer
+            # Net transfer
             net=net_stats,
+
+            # Active rendering processes with CPU
+            process_list=process_list
         )
         del mem
         return stats
@@ -272,6 +281,10 @@ class NodeStatsCollector:
             client.track_metric("Disk usage", disk_usage.used, properties={"Disk": name})
             client.track_metric("Disk free", disk_usage.free, properties={"Disk": name})
 
+        if stats.process_list:
+            for process_name, cpu in stats.process_list:
+                client.track_metric("ActiveProcess", cpu, properties={"Process": process_name})
+
         client.track_metric("Memory used", stats.mem_used)
         client.track_metric("Memory available", stats.mem_avail)
         client.track_metric("Disk read", stats.disk_io.read_bps)
@@ -292,7 +305,11 @@ class NodeStatsCollector:
         logger.info("Disk usage:")
         for name, disk_usage in stats.disk_usage.items():
             logger.info("  - %s: %i/%i (%i%%)", name, disk_usage.used, disk_usage.total, disk_usage.percent)
-            
+
+        if stats.process_list:
+            for process_name, cpu in stats.process_list:
+                logger.info("ActiveProcess: %s (CPU %d%%)", process_name, cpu)
+
         logger.info("-------------------------------------")
         logger.info("")
 
