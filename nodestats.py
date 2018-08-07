@@ -15,7 +15,7 @@ from applicationinsights import TelemetryClient
 
 VERSION = "0.0.1.1"
 _DEFAULT_STATS_UPDATE_INTERVAL = 5
-PROCESSES_TO_WATCH = ['3dsmax.exe', '3dsmaxcmd.exe', '3dsmaxio.exe', '3dsmaxcmdio.exe', 'Render.exe', 'kick.exe', 'Commandline.exe', 'CINEMA 4D.exe']
+PROCESSES_TO_WATCH = ['3dsmax.exe', '3dsmaxcmd.exe', '3dsmaxio.exe', '3dsmaxcmdio.exe', 'Render.exe', 'kick.exe', 'Commandline.exe', 'CINEMA 4D.exe', 'vray.exe', 'maya.exe', 'mayabatch.exe']
 
 def setup_logger():
     # logger defines
