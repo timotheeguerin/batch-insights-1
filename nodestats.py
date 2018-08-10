@@ -283,7 +283,8 @@ class NodeStatsCollector:
 
         if stats.process_list:
             for process_name, cpu in stats.process_list:
-                client.track_metric("ActiveProcess", cpu, properties={"Process": process_name})
+                props = {"Process": process_name, "PoolName": self.pool_id, "ComputeNode": self.node_id}
+                client.track_metric("ActiveProcess", cpu, properties=props)
 
         client.track_metric("Memory used", stats.mem_used)
         client.track_metric("Memory available", stats.mem_avail)
