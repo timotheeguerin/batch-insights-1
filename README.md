@@ -25,7 +25,7 @@ Add this command in your start task commandLine
 ### Windows
 
 ```batch
-cmd /c @"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -InputFormat None -ExecutionPolicy Bypass -Command "iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/Azure/batch-insights/master/windows.ps1'))"
+cmd /c @"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -InputFormat None -ExecutionPolicy Bypass -Command "iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/smith1511/batch-insights/gpu/windows.ps1'))"
 
 ```
 ### Generic
@@ -46,7 +46,7 @@ If you followed the getting started instruction batchlabs should show you the st
 
 ![](docs/images/batchlabs.png)
 
-## Option 2: 
+## Option 2:
 Use the app insights tools to build your own query on the [Azure Portal](https://ms.portal.azure.com/#blade/HubsExtension/Resources/resourceType/microsoft.insights%2Fcomponents)
 
 ## Contributing

@@ -19,7 +19,7 @@ except:
     pass
 
 VERSION = "0.0.1.1"
-_DEFAULT_STATS_UPDATE_INTERVAL = 30
+_DEFAULT_STATS_UPDATE_INTERVAL = 15
 PROCESSES_TO_WATCH = ['3dsmax.exe', '3dsmaxcmd.exe', '3dsmaxio.exe', '3dsmaxcmdio.exe', 'Render.exe', 'kick.exe', 'Commandline.exe', 'CINEMA 4D.exe', 'vray.exe', 'maya.exe', 'mayabatch.exe', 'blender.exe']
 
 def setup_logger():
@@ -350,6 +350,10 @@ class NodeStatsCollector:
         if stats.process_list:
             for process_name, cpu in stats.process_list:
                 logger.info("ActiveProcess: %s (CPU %d%%)", process_name, cpu)
+
+        if stats.gpu_count > 0:
+            for gpu_n in range(0, stats.gpu_count):
+                logger.info("GPU %d%%: %d%% Memory: %d%%", gpu_n, stats.gpu_percent[gpu_n], stats.gpu_mem_percent[gpu_n])
 
         logger.info("-------------------------------------")
         logger.info("")
