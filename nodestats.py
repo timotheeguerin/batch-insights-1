@@ -13,6 +13,11 @@ import sys
 import psutil
 from applicationinsights import TelemetryClient
 
+try:
+    from pynvml import *
+except:
+    pass
+
 VERSION = "0.0.1.1"
 _DEFAULT_STATS_UPDATE_INTERVAL = 30
 PROCESSES_TO_WATCH = ['3dsmax.exe', '3dsmaxcmd.exe', '3dsmaxio.exe', '3dsmaxcmdio.exe', 'Render.exe', 'kick.exe', 'Commandline.exe', 'CINEMA 4D.exe', 'vray.exe', 'maya.exe', 'mayabatch.exe', 'blender.exe']
@@ -94,6 +99,9 @@ class NodeStats:
                  num_pids=0,
                  cpu_count=0,
                  cpu_percent=None,
+                 gpu_count=0,
+                 gpu_percent=None, # list
+                 gpu_mem_percent=None, # list
                  mem_total=0,
                  mem_avail=0,
                  swap_total=0,
@@ -109,6 +117,9 @@ class NodeStats:
         self.num_pids = num_pids
         self.cpu_count = cpu_count
         self.cpu_percent = cpu_percent
+        self.gpu_count = gpu_count
+        self.gpu_percent = gpu_percent
+        self.gpu_mem_percent = gpu_mem_percent
         self.mem_total = mem_total
         self.mem_avail = mem_avail
         self.swap_total = swap_total
@@ -219,10 +230,34 @@ class NodeStatsCollector:
         # Tuple (proc name, CPU %)
         process_list = list(((proc.info['name'], proc.cpu_percent(interval=1)) for proc in psutil.process_iter(attrs=['name']) if proc.info["name"] in PROCESSES_TO_WATCH))
 
+        gpu_count = 0
+        gpu_percent = None
+        gpu_mem_percent = None
+
+        try:
+            nvmlInit()
+            logger.info('NVIDIA Driver version {}'.format(nvmlSystemGetDriverVersion()))
+            gpu_count = nvmlDeviceGetCount()
+            gpu_percent = []
+            gpu_mem_percent = []
+            for i in range(gpu_count):
+                handle = nvmlDeviceGetHandleByIndex(i)
+                utilization = nvmlDeviceGetUtilizationRates(handle)
+                logger.info('Device {}'.format(nvmlDeviceGetName(handle)))
+                gpu_percent.append(utilization.gpu)
+                gpu_mem_percent.append(utilization.memory)
+            nvmlShutdown()
+        except Exception as e:
+            logger.error('Could not retrieve GPU stats: {}'.format(e))
+
         stats = NodeStats(
             cpu_count=psutil.cpu_count(),
             cpu_percent=psutil.cpu_percent(interval=None, percpu=True),
             num_pids=len(psutil.pids()),
+
+            gpu_count=gpu_count,
+            gpu_percent=gpu_percent,
+            gpu_mem_percent=gpu_mem_percent,
 
             # Memory
             mem_total=mem.total,
@@ -285,6 +320,11 @@ class NodeStatsCollector:
             for process_name, cpu in stats.process_list:
                 props = {"Process": process_name, "PoolName": self.pool_id, "ComputeNode": self.node_id}
                 client.track_metric("ActiveProcess", cpu, properties=props)
+
+        if stats.gpu_count > 0:
+            for gpu_n in range(0, stats.gpu_count):
+                client.track_metric("Gpu usage", stats.gpu_percent[gpu_n], properties={"Gpu #": gpu_n})
+                client.track_metric("Gpu memory usage", stats.gpu_mem_percent[gpu_n], properties={"Gpu #": gpu_n})
 
         client.track_metric("Memory used", stats.mem_used)
         client.track_metric("Memory available", stats.mem_avail)
